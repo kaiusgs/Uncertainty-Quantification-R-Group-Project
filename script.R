@@ -127,7 +127,7 @@ experiment_df = data.frame(time_data, S_data, I_data)
 names(experiment_df) = c("time", "S", "I")
 
 ssq = function(pars){
-    # define the parameter, fixing b kappa mu & alpha3
+    # define the parameter, fixing b kappa & mu 
     parameters = c(
         b       = b                      ,
         kappa   = kappa                  ,
@@ -227,7 +227,7 @@ print(paste("RSS for I:",  sum((out2_df$I - experiment_df$I)^2) ))
 print(out2_df)
 
 # Plot the solution of the ODEs with our best-fit values, 
-# the article’s best-fit values, and also your data points.
+# the article’s best-fit values, and also the data points.
 # plot the predicted susceptible stems
 plot(
   out1[,1], out1[,2], type = "l", col = "blue", lwd = 2.5,
@@ -237,7 +237,7 @@ plot(
 )
 lines(out2[,1], out2[,2], type = "l", col = "green", lwd = 2.5)
 points(time_data, S_data, pch = 17, cex = 2)
-legend("topright", legend = c( "papaer's best-fit","our best-fit"),
+legend("topright", legend = c( "The paper's best-fit", "Our best-fit"),
     col = c("blue", "green"), lwd = 2.5)
 # plot the predicted infected stems
 plot(
@@ -248,7 +248,7 @@ plot(
 )
 lines(out2[,1], out2[,3], type = "l", col = "green", lwd = 2.5)
 points(time_data, I_data, pch = 17, cex = 2)
-legend("topright", legend = c( "papaer's best-fit","our best-fit"),
+legend("topright", legend = c( "The paper's best-fit", "Our best-fit"),
     col = c("blue", "green"), lwd = 2.5)
 
 
@@ -257,4 +257,123 @@ legend("topright", legend = c( "papaer's best-fit","our best-fit"),
 # Sensitivity Analysis
 # ******************************
 
+# define the full sensitivity system function
+model3_sens = function(t, y, pars){
+    with(as.list(c(y, pars)), {
+        # Model III System 
+        dS = b * (kappa - (S + I + R)) - L * S - 
+            (alpha1 * I^2 - alpha2 * I) / (alpha3 + I^2)
+        dI = L * S - d * I 
+        dR = d * I 
+        dL = - mu * L 
+
+        # Sensitivity Equations
+        # predefined equation
+        fI = ( (2 * alpha1 * I - alpha2) * ( alpha3 + I^2 ) - 
+                (alpha1 * I^2 - alpha2 * I) * ( 2 * I ) 
+             )  /  ( alpha3 + I^2 ) ^ 2
+
+        # sensitivity with respect to b
+        dSb = (- b - L) * Sb + (- b - fI) * Ib - b * Rb - S * Lb + 
+                 (kappa - (S + I + R))
+        dIb = L * Sb - d * Ib + S * Lb
+        dRb = d * Ib
+        dLb = - mu * Lb 
+
+        # sensitivity with respect to kappa
+        dSk = (- b - L) * Sk + (- b - fI) * Ik - b * Rk - S * Lk + b
+        dIk = L * Sk - d * Ik + S * Lk
+        dRk = d * Ik
+        dLk = - mu * Lk
+
+        # Sensitivity with respect to mu
+        dSm = (- b - L) * Sm + (- b - fI) * Im - b * Rm - S * Lm
+        dIm = L * Sm - d * Im + S * Lm
+        dRm = d * Im
+        dLm = - mu * Lm - L
+
+        # Sensitivity with respect to d
+        dSd = (- b - L) * Sd + (- b - fI) * Id - b * Rd - S * Ld
+        dId = L * Sd - d * Id + S * Ld - I 
+        dRd = d * Id + I 
+        dLd = - mu * Ld
+
+        # Sensitivity with respect to alpha1
+        dSa1= (- b - L) * Sa1 + (- b - fI) * Ia1 - b * Ra1 - S * La1 - 
+                I^2 / ( alpha3 + I^2 )
+        dIa1= L * Sa1 - d * Ia1 + S * La1
+        dRa1= d * Ia1
+        dLa1= - mu * La1
+
+        # Sensitivity with respect to alpha2
+        dSa2= (- b - L) * Sa2 + (- b - fI) * Ia2 - b * Ra2 - S * La2 + 
+                I / ( alpha3 + I^2 )
+        dIa2= L * Sa2 - d * Ia2 + S * La2
+        dRa2= d * Ia2
+        dLa2= - mu * La2
+
+        # Sensitivity with respect to alpha3
+        dSa3= (- b - L) * Sa3 + (- b - fI) * Ia3 - b * Ra3 - S * La3 +
+                (alpha1 * I^2 - alpha2 * I ) / ( alpha3 + I^2 )^2
+        dIa3= L * Sa3 - d * Ia3 + S * La3
+        dRa3= d * Ia3
+        dLa3= - mu * La3
+
+        # Sensitivity with respect to lambda0
+        dSl = (- b - L) * Sl + (- b - fI) * Il - b * Rl - S * Ll
+        dIl = L * Sl - d * Il + S * Ll
+        dRl = d * Il
+        dLl = - mu * Ll
+
+        return(list(c(
+            dS, dI, dR, dL, 
+            dSb, dIb, dRb, dLb, 
+            dSk, dIk, dRk, dLk,
+            dSm, dIm, dRm, dLm,
+            dSd, dId, dRd, dLd,
+            dSa1, dIa1, dRa1, dLa1,
+            dSa2, dIa2, dRa2, dLa2,
+            dSa3, dIa3, dRa3, dLa3,
+            dSl, dIl, dRl, dLl
+        )))
+    })
+}
+
+# define the parameter using the best-fit values
+pars = c(
+    b       = b       ,
+    kappa   = kappa   ,
+    lambda0 = lambda0 ,
+    mu      = mu      ,
+    alpha1  = alpha1  ,
+    alpha2  = alpha2  ,
+    alpha3  = alpha3  ,
+    d       = d       
+)
+
+# set the initial condition for y 
+yini_sens = c(
+    S = 0,
+    I = 0,
+    R = 0,
+    L = lambda0,
+    Sb = 0, Ib = 0, Rb = 0, Lb = 0, 
+    Sk = 0, Ik = 0, Rk = 0, Lk = 0, 
+    Sm = 0, Im = 0, Rm = 0, Lm = 0, 
+    Sd = 0, Id = 0, Rd = 0, Ld = 0, 
+    Sa1 = 0, Ia1 = 0, Ra1 = 0, La1 = 0, 
+    Sa2 = 0, Ia2 = 0, Ra2 = 0, La2 = 0, 
+    Sa3 = 0, Ia3 = 0, Ra3 = 0, La3 = 0, 
+    Sl = 0, Il = 0, Rl = 0, Ll = 1
+)
+
+# define the times to store the solution
+times <- seq(0, 12, by = 0.01)
+
+# Call the ODE solver and print the summary of the solution
+out3  <- ode(yini_sens, times, model3_sens, pars)
+summary(out3)
+
+# Plot the solution of sensitivity system
+plot(out3)
 
