@@ -377,3 +377,73 @@ summary(out3)
 # Plot the solution of sensitivity system
 plot(out3)
 
+# ============================================
+# Extracting the sensitivity values
+# ============================================
+
+# Sensitivity of S and I to each parameter
+S_lambda0 <- out3[, "Sl"]     # dS/dλ₀
+I_lambda0 <- out3[, "Il"]     # dI/dλ₀
+
+S_alpha1 <- out3[, "Sa1"]     # dS/dα₁
+I_alpha1 <- out3[, "Ia1"]     # dI/dα₁
+
+S_alpha2 <- out3[, "Sa2"]     # dS/dα₂
+I_alpha2 <- out3[, "Ia2"]     # dI/dα₂
+
+S_alpha3 <- out3[, "Sa3"]     # dS/dα₃
+I_alpha3 <- out3[, "Ia3"]     # dI/dα₃
+
+S_d <- out3[, "Sd"]           # dS/dd
+I_d <- out3[, "Id"]           # dI/dd
+
+# calculating maximum absolute sensitivity
+
+max_sens <- data.frame(
+  Parameter = c("λ₀", "α₁", "α₂", "α₃", "d"),
+  S_sensitivity = c(max(abs(S_lambda0)), max(abs(S_alpha1)), 
+                    max(abs(S_alpha2)), max(abs(S_alpha3)), max(abs(S_d))),
+  I_sensitivity = c(max(abs(I_lambda0)), max(abs(I_alpha1)), 
+                    max(abs(I_alpha2)), max(abs(I_alpha3)), max(abs(I_d)))
+)
+
+print(max_sens)#max absolute sensitivity
+
+# calculating relative sensitivity
+
+# Get parameter values from your fit
+lambda0_val <- par_est$lambda0
+alpha1_val <- par_est$alpha1
+alpha2_val <- par_est$alpha2
+alpha3_val <- par_est$alpha3
+d_val <- par_est$d
+
+# Get S values (avoid division by zero)
+S_val <- out3[, "S"]
+S_val[S_val == 0] <- 0.001
+
+# Relative sensitivity = (p / S) * (dS/dp)
+rel_S_lambda0 <- (lambda0_val / S_val) * S_lambda0
+rel_S_alpha1  <- (alpha1_val / S_val) * S_alpha1
+rel_S_alpha2  <- (alpha2_val / S_val) * S_alpha2
+rel_S_alpha3  <- (alpha3_val / S_val) * S_alpha3
+rel_S_d       <- (d_val / S_val) * S_d
+
+rel_max <- data.frame(
+  Parameter = c("λ₀", "α₁", "α₂", "α₃", "d"),
+  Relative_Sensitivity = c(max(abs(rel_S_lambda0)), max(abs(rel_S_alpha1)),
+                           max(abs(rel_S_alpha2)), max(abs(rel_S_alpha3)),
+                           max(abs(rel_S_d)))
+)
+
+print(rel_max)#maximum relative sensitivity
+
+# determining parameters with low sensitivity
+
+ranked <- rel_max[order(-rel_max$Relative_Sensitivity),]
+print(ranked)#sensitivity ranking(highest to lowest)
+
+# Identify low sensitivity parameters (relative sensitivity < 0.5)
+low_sens <- rel_max[rel_max$Relative_Sensitivity < 0.5, "Parameter"]
+print(paste("Parameters with LOW relative sensitivity (< 0.5):", 
+            paste(low_sens, collapse = ", ")))
